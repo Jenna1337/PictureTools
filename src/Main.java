@@ -1,21 +1,43 @@
 import java.awt.Color;
-import java.util.ArrayList;
 
+import picTools.Iterator2D;
 import picTools.PhotoMaker;
 import picTools.Picture;
+import picTools.Pixel;
 
 public class Main
 {
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
-		short combonum=3;
-		doCombo(combonum);
+		Picture redleft=new Picture(10,10);
+		Picture bluetop=new Picture(10,10);
+		redleft=PhotoMaker.setAlpha(redleft, 0);
+		bluetop=PhotoMaker.setAlpha(bluetop, 0);
+		Iterator2D<Pixel> cols = new Iterator2D<Pixel>(PhotoMaker.getCols(redleft, 0, redleft.getWidth()/2-1));
+		for(Pixel p:cols)
+			p.setColor(Color.RED);
+		Iterator2D<Pixel> rows = new Iterator2D<Pixel>(PhotoMaker.getRows(bluetop, 0, bluetop.getHeight()/2-1));
+		for(Pixel p:rows)
+			p.setColor(Color.BLUE);
+		redleft.write("redleft");
+		bluetop.write("bluetop");
+		
+		Picture pic1=PhotoMaker.merge(false,redleft,bluetop);
+		pic1.write("merge1");
+		Picture pic2=PhotoMaker.merge(true,redleft,bluetop);
+		pic2.write("merge2");
+		System.out.println(Integer.toHexString(redleft.getBasicPixel(7, 7)));
+		System.out.println(Integer.toHexString(bluetop.getBasicPixel(7, 7)));
+		System.out.println(Integer.toHexString(pic1.getBasicPixel(7, 7)));
+		System.out.println(Integer.toHexString(pic2.getBasicPixel(7, 7)));
 	}
 	@SuppressWarnings("unchecked")
 	public static void doCombo(final int combotimes)
 	{
+		if(combotimes>3)
+			throw new IllegalArgumentException("illegal call to doCombo() with value "+combotimes+".");
 		combo(combotimes-1, new Picture[combotimes], new String[combotimes], combotimes, new long[]{0, (long) Math.pow(colors.length, combotimes)}, 
-				new ArrayList[]{new ArrayList<String>()});
+				new java.util.ArrayList[]{new java.util.ArrayList<String>()});
 	}
 	private static void combo(int combosleft, Picture[] colorpics, String[] names, final int totalcombos, long[] stats, java.util.ArrayList<String>[] cmbs)
 	{

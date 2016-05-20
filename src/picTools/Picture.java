@@ -64,8 +64,8 @@ public class Picture
 	 */
 	public  Picture(int width, int height)
 	{
-		bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-		setAllPixelsToAColor(PhotoMaker.transparent);
+		bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE);
+		PhotoMaker.setAlpha(this, 0);
 	}
 	
 	/**
@@ -79,7 +79,7 @@ public class Picture
 	public  Picture(int width, int height, Color theColor)
 	{
 		this(width,height);
-		setAllPixelsToAColor(theColor);
+		PhotoMaker.setAlpha(this, 0);
 	}
 	
 	/**

@@ -6,7 +6,8 @@ import java.util.ArrayList;
 public class PhotoMaker
 {
 	public static final String filepath="";
-	public static final Color transparent = new Color(0b11111111000000000000000000000000, true);
+	public static final Color transparent = new Color(0x00000000, true);
+	public static final Color opaque      = new Color(0xFF000000, true);
 	public static Picture mirrorHorizontal(Picture pic, boolean topToBot)
 	{
 		Picture cop = new Picture(pic);
@@ -76,7 +77,8 @@ public class PhotoMaker
 			mwa[i]=pics[i].getWidth();
 		}
 		int mh=max(mha),mw=max(mwa);
-		Picture cop = new Picture(mw, mh, transparent);
+		Picture cop = new Picture(mw, mh);
+		cop=PhotoMaker.setAlpha(cop, 0);
 		
 		cop.getPixels2D();
 		for(int row=0;row<cop.getHeight(); ++row)
@@ -85,28 +87,98 @@ public class PhotoMaker
 			{
 				ArrayList<Integer> colorlist=new ArrayList<Integer>();
 				for(int pi=0;pi<pics.length;++pi)
-					colorlist.add(pics[pi].getPixel(col, row).getColor().getRGB());
-				
-				//from http://stackoverflow.com/a/1165348
-				long sum1=0,sum2=0;
-				for (int color : colorlist)
 				{
-					sum1+= color    &0x00FF00FF;
-					sum2+=(color>>8)&0x00FF00FF;
+					int c =pics[pi].getBasicPixel(col, row);
+					colorlist.add(c);
 				}
-				int value=0;
-				final int size=colorlist.size();
-				value|=bitmask?0xFF:(((sum1&0xFFFF)/size)&0xFF);
-				value|=(((sum2&0xFFFF)/size)&0xFF)<<8;
-				value|=((((sum1>>=16)&0xFFFF)/size)&0xFF)<<16;
-				value|=((((sum2>>=16)&0xFFFF)/size)&0xFF)<<24;
+				
+				int outcolor=transparent.getRGB();
+				outcolor=blend(colorlist, bitmask);
 				
 				//update the picture with the int value
-				cop.setBasicPixel(row,col,value);
+				cop.setBasicPixel(col,row,outcolor);
 			}
 		}
 		return cop;
 	}
+	public static int blend(ArrayList<Integer> colorlist, boolean bitmask)
+	{
+		long sum1=0,sum2=0;
+		int alpha=0;
+		for (int color : colorlist)
+		{
+			alpha+=((color>>24)&0xFF);
+			sum1+= color    &0x00FF00FF;
+			sum2+=(color>>8)&0x00FF00FF;
+		}
+		final int size=colorlist.size();
+		alpha=bitmask ? ((alpha==0)?0:0xFF) : (alpha/size);
+		int value=0;
+		value|=(((sum1&0xFFFF)/(bitmask?1:size))&0xFF);
+		value|=(((sum2&0xFFFF)/(bitmask?1:size))&0xFF)<<8;
+		value|=((((sum1>>=16)&0xFFFF)/(bitmask?1:size))&0xFF)<<16;
+		return value|=alpha<<24;
+	}
+	public static Pixel[][] getPixels(Picture pic, int rowstart, int colstart, int rowend, int colend)
+	{
+		Pixel[][] pixs = new Pixel[rowend-rowstart+1][colend-colstart+1];
+		for (int row = rowstart; row <= rowend && row < pic.getHeight(); row++)
+			for (int col = colstart; col <= colend && col < pic.getWidth(); col++)
+				pixs[rowend-row][colend-col] = pic.getPixels2D()[row][col];
+		return pixs;
+	}
+	/**
+	 * 
+	 * @param pic
+	 * @param row
+	 * @return Pixels in row-column order
+	 */
+	public static Pixel[] getRow(Picture pic, int row)
+	{
+		return getPixels(pic, row, 0, row, pic.getWidth()-1)[0];
+	}
+	/**
+	 * 
+	 * @param pic
+	 * @param rowfrom
+	 * @param rowto
+	 * @return Pixels in row-column order
+	 */
+	public static Pixel[][] getRows(Picture pic, int rowfrom, int rowto)
+	{
+		return getPixels(pic, rowfrom, 0, rowto, pic.getWidth()-1);
+	}
+	/**
+	 * 
+	 * @param pic
+	 * @param col
+	 * @return Pixels in column-row order
+	 */
+	public static Pixel[] getCol(Picture pic, int col)
+	{
+		Pixel[][] rowcol = getPixels(pic, 0, col, pic.getHeight()-1, col);
+		Pixel[] pixcol=new Pixel[pic.getHeight()];
+		for(int i=0;i<pixcol.length;++i)
+			pixcol[i]=rowcol[i][0];
+		return pixcol;
+	}
+	/**
+	 * 
+	 * @param pic
+	 * @param colfrom
+	 * @param colto
+	 * @return Pixels in column-row order
+	 */
+	public static Pixel[][] getCols(Picture pic, int colfrom, int colto)
+	{
+		Pixel[][] rowcol = getPixels(pic, 0, colfrom, pic.getHeight()-1, colto);
+		Pixel[][] colrow=new Pixel[rowcol[0].length][rowcol.length];
+		for (int x = 0; x < rowcol[0].length; x++)
+			for (int y = 0; y < rowcol.length; y++)
+				colrow[x][y] = rowcol[y][x];
+		return colrow;
+	}
+	
 	private static Picture modifyPicture(Picture pic, String f, Object value)
 	{
 		try
