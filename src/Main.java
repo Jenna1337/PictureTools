@@ -9,6 +9,11 @@ public class Main
 {
 	public static void main(String[] args) throws Exception
 	{
+		doCombo(2);
+		transparencyblendtest();
+	}
+	public static void transparencyblendtest()
+	{
 		Picture redleft=new Picture(10,10);
 		Picture bluetop=new Picture(10,10);
 		redleft=PhotoMaker.setAlpha(redleft, 0);
