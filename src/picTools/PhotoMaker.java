@@ -6,8 +6,48 @@ import java.util.ArrayList;
 public class PhotoMaker
 {
 	public static final String filepath="";
-	public static final Color transparent = new Color(0x00000000, true);
-	public static final Color opaque      = new Color(0xFF000000, true);
+	public static final int transparent = 0x00000000;
+	public static final int opaque      = 0xFF000000;
+	public static boolean isTransparent(int color)
+	{
+		return get(color,'a')==get(transparent,'a');
+	}
+	public static boolean isSemiTransparent(int color)
+	{
+		return (!isTransparent(color))&&(!isOpaque(color));
+	}
+	public static boolean isOpaque(int color)
+	{
+		return get(color,'a')==get(opaque,'a');
+	}
+	public static final int BitOffset_RED  =0;
+	public static final int BitOffset_GREEN=8;
+	public static final int BitOffset_BLUE =16;
+	public static final int BitOffset_ALPHA=24;
+	public static int get(int color, char attr)
+	{
+		switch(attr)
+		{
+			case 'r':
+			case 'R':
+				return get(color,BitOffset_RED);
+			case 'g':
+			case 'G':
+				return get(color,BitOffset_GREEN);
+			case 'b':
+			case 'B':
+				return get(color,BitOffset_BLUE);
+			case 'a':
+			case 'A':
+				return get(color,BitOffset_ALPHA);
+			default:
+				throw new IllegalArgumentException("Character \'"+attr+"\'.");
+		}
+	}
+	public static int get(int color, int offset)
+	{
+		return ((color>>offset)&0xFF);
+	}
 	public static Picture mirrorHorizontal(Picture pic, boolean topToBot)
 	{
 		Picture cop = new Picture(pic);
@@ -66,17 +106,41 @@ public class PhotoMaker
 	{
 		return modifyPixel(pic, "setColor", value);
 	}
+	public static Picture merge(boolean mask, String[] filenames)
+	{
+		Picture[] tomerge=new Picture[filenames.length];
+		for(int i=0;i<tomerge.length;++i)
+			tomerge[i]=new Picture(filenames[i]);
+		return merge(mask, tomerge);
+	}
 	public static Picture merge(final boolean bitmask, Picture... pics)
 	{
 		//final boolean bitmask=false; 
-		int[] mha=new int[pics.length];
-		int[] mwa=new int[pics.length];
+		int mh=0,mw=0;
 		for(int i=0;i<pics.length;++i)
 		{
-			mha[i]=pics[i].getHeight();
-			mwa[i]=pics[i].getWidth();
+			mh=Math.max(mh,pics[i].getHeight());
+			mw=Math.max(mw,pics[i].getWidth());
 		}
-		int mh=max(mha),mw=max(mwa);
+		int[] offw=new int[pics.length], offh=new int[pics.length];
+		for(int i=0; i<pics.length; ++i)
+		{
+			offw[i]=0; offh[i]=0;
+			if(pics[i].getHeight()<mh || pics[i].getWidth()<mh)
+			{
+				Picture newpic = new Picture(mw, mh);
+				newpic=PhotoMaker.setAlpha(newpic, 0);
+				
+				while(pics[i].getHeight()+offh[i]<mh)
+				{
+					offh[i]+=1;
+				}
+				while(pics[i].getWidth()+offw[i]<mw)
+				{
+					offw[i]+=1;
+				}
+			}
+		}
 		Picture cop = new Picture(mw, mh);
 		cop=PhotoMaker.setAlpha(cop, 0);
 		
@@ -88,15 +152,20 @@ public class PhotoMaker
 				ArrayList<Integer> colorlist=new ArrayList<Integer>();
 				for(int pi=0;pi<pics.length;++pi)
 				{
-					int c =pics[pi].getBasicPixel(col, row);
+					int c;
+					try
+					{
+						c = pics[pi].getBasicPixel(col-offw[pi]/2, row-offh[pi]/2);
+					}
+					catch(ArrayIndexOutOfBoundsException e)
+					{
+						c = transparent;
+					}
 					colorlist.add(c);
 				}
 				
-				int outcolor=transparent.getRGB();
-				outcolor=blend(colorlist, bitmask);
-				
 				//update the picture with the int value
-				cop.setBasicPixel(col,row,outcolor);
+				cop.setBasicPixel(col,row,blend(colorlist, bitmask));
 			}
 		}
 		return cop;
@@ -105,18 +174,24 @@ public class PhotoMaker
 	{
 		long sum1=0,sum2=0;
 		int alpha=0;
+		int size=colorlist.size();
 		for (int color : colorlist)
 		{
-			alpha+=((color>>24)&0xFF);
-			sum1+= color    &0x00FF00FF;
-			sum2+=(color>>8)&0x00FF00FF;
+			alpha+=get(color,'a');
+			if(!isTransparent(color))
+			{
+				sum1+= color    &0x00FF00FF;
+				sum2+=(color>>8)&0x00FF00FF;
+			}
+			if(isTransparent(color))
+				size-=1;
 		}
-		final int size=colorlist.size();
-		alpha=bitmask ? ((alpha==0)?0:0xFF) : (alpha/size);
+		alpha=bitmask ? ((alpha==0)?0:0xFF) : (alpha/colorlist.size());
 		int value=0;
-		value|=(((sum1&0xFFFF)/(bitmask?1:size))&0xFF);
-		value|=(((sum2&0xFFFF)/(bitmask?1:size))&0xFF)<<8;
-		value|=((((sum1>>=16)&0xFFFF)/(bitmask?1:size))&0xFF)<<16;
+		try{
+		value|=(((sum1&0xFFFF)/(size))&0xFF);}catch(ArithmeticException ae){}try{
+		value|=(((sum2&0xFFFF)/(size))&0xFF)<<8;}catch(ArithmeticException ae){}try{
+		value|=((((sum1>>=16)&0xFFFF)/(size))&0xFF)<<16;}catch(ArithmeticException ae){}
 		return value|=alpha<<24;
 	}
 	public static Pixel[][] getPixels(Picture pic, int rowstart, int colstart, int rowend, int colend)

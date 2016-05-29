@@ -58,7 +58,7 @@ public class Picture
 	/**
 	 * A constructor that takes the width and height desired for a picture and
 	 * creates a buffered image of that size.  This constructor doesn't 
-	 * show the picture.  The pixels will all be white.
+	 * show the picture.  The pixels will all be transparent.
 	 * @param width the desired width
 	 * @param height the desired height
 	 */
@@ -79,7 +79,7 @@ public class Picture
 	public  Picture(int width, int height, Color theColor)
 	{
 		this(width,height);
-		PhotoMaker.setAlpha(this, 0);
+		PhotoMaker.setColor(this, theColor);
 	}
 	
 	/**
@@ -149,7 +149,7 @@ public class Picture
 			// loop through all y
 			for (int y = 0; y < this.getHeight(); y++)
 			{
-				getPixel(x,y).setColor(color);
+				setBasicPixel(x, y, color.getRGB());
 			}
 		}
 	}
@@ -756,7 +756,8 @@ public class Picture
 			{
 				fromPixel = fromPixels[fromRow][fromCol];
 				toPixel = toPixels[toRow][toCol];
-				toPixel.setColor(fromPixel.getColor());
+				if(fromPixel.getColor().getAlpha()!=0)
+					toPixel.setColor(fromPixel.getColor());
 			}
 		}   
 	}
@@ -773,7 +774,8 @@ public class Picture
 			{
 				fromPixel = fromPixels[fromRow][fromCol];
 				toPixel = toPixels[toRow][toCol];
-				toPixel.setColor(fromPixel.getColor());
+				if(fromPixel.getColor().getAlpha()!=0)
+					toPixel.setColor(fromPixel.getColor());
 			}
 		}   
 	}

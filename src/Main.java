@@ -1,4 +1,7 @@
 import java.awt.Color;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.ArrayList;
 
 import picTools.Iterator2D;
 import picTools.PhotoMaker;
@@ -9,8 +12,54 @@ public class Main
 {
 	public static void main(String[] args) throws Exception
 	{
-		doCombo(2);
-		transparencyblendtest();
+		ArrayList<String> names1 = new ArrayList<String>();
+		ArrayList<String> names2 = new ArrayList<String>();
+		
+		final String delim=prompt("delim? ", false);
+		final String path =prompt("Path? ", true);
+		final String newname =prompt("New name? ", true);
+		boolean mask=true;
+		
+		BufferedReader f = new BufferedReader(new java.io.FileReader(path+"_Layouts.txt"));
+		String line="";
+		boolean mysec=true;
+		while((line=f.readLine())!=null)
+		{
+			if(mysec)
+			{
+				if(line.equalsIgnoreCase("\\next"))
+					mysec=false;
+				else
+					names1.add(path+line+".png");
+			}
+			else
+				names2.add(line);
+		}
+		f.close();
+		
+		
+		for(String part1:names1)
+		{
+			String[] filenames=new String[names2.size()];
+			for(int i=0;i<names2.size();++i)
+				filenames[i]=part1.replace(delim, names2.get(i));
+			try
+			{
+				PhotoMaker.merge(mask, filenames).write(part1.replace(delim,newname).replace(".png", "2.png"));
+				System.out.println("Wrote "+part1.replace(delim,newname));
+			}
+			catch(ArrayIndexOutOfBoundsException aioobe)
+			{
+				System.err.println(part1.replace(delim,newname));
+				aioobe.printStackTrace();
+			}
+		}
+	}
+	public static String prompt(String outtext, boolean inputonnextline) throws IOException
+	{
+		System.out.print(outtext+(inputonnextline?System.lineSeparator():""));
+		BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(System.in));
+		return reader.readLine();
 	}
 	public static void transparencyblendtest()
 	{
